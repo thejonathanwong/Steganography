@@ -1,3 +1,6 @@
 *.tif
 *.txt
 *.swp
+*.o
+imEncrypt
+imDecrypt
