@@ -22,7 +22,9 @@ imDecrypt can be run using the following command:
 
 <h3>TODO:</h3>
 
-Parallelized version of the program
-Compression of the image
-Increase number of chars that can be encoded
+<ul>
+<li>Parallelized version of the program</li>
+<li>Compression of the image</li>
+<li>Increase number of chars that can be encoded</li>
+</ul>
 
