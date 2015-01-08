@@ -5,8 +5,7 @@
 #include <string.h>
 #include "tiffio.h"
 
-#define TWIDTH 128
-#define SBUFSIZE 1000
+#define TWIDTH 128 //tile width
 
 int main(int argc, char * argv[]) {
 
@@ -20,7 +19,6 @@ int main(int argc, char * argv[]) {
 		perror("Unable to open file");
 		exit(1);
 	}
-
 
 	//vars to read image
 	uint32 imageLength;
@@ -50,6 +48,9 @@ int main(int argc, char * argv[]) {
 	for(i = 0; i < imageLength; i++) {
 		TIFFReadScanline(tif, imageBuf+i*scanlineSize, i, 1);
 	}
+	//maximum number of complete tiles width and height wise
+	int maxWTiles = imageWidth/TWIDTH;
+	int maxHTiles = imageLength/TWIDTH;
 
 	//build tile and sums all bits besides lowest bit of each pixel
 	int j;
@@ -65,7 +66,6 @@ int main(int argc, char * argv[]) {
 			psum += pval & bitmask;
 		}
 	}
-	//printf("%d\n", psum);
 
 	//stores sum in first lim pixels of tile
 	int lim = log2(maxVal*TWIDTH*TWIDTH);
@@ -74,16 +74,7 @@ int main(int argc, char * argv[]) {
 		foundPSum <<= 1;
 		foundPSum += tileR[i]&1;
 	}
-
-	//printf("%d\n", abs(foundPSum - psum)/2);
-
-	int slen = abs(psum - foundPSum)/2;
-//	printf("slen = %d\n", slen);
-//	slen = 20;
-
-	//maximum number of complete tiles width and height wise
-	int maxWTiles = imageWidth/TWIDTH;
-	int maxHTiles = imageLength/TWIDTH;
+	int slen = abs(psum - foundPSum)/2; //number of chars in the encoded string
 
 	int originX = 0;
 	int originY = 0;
@@ -97,8 +88,6 @@ int main(int argc, char * argv[]) {
 		// vars to control origin of the tile in the original image
 		colour = ((sindex+1)/maxWTiles) / maxHTiles; //determines the colour to be written to
 		cindex = (sindex+1) % (maxWTiles*maxHTiles); //resets origin to 0,0 when switching colour
-//		if ( !colour && !cindex ) { cindex++; }
-
 		originX = (3*TWIDTH)*((cindex)%maxWTiles);
 		originY = (TWIDTH*scanlineSize) * ((cindex)/maxWTiles);
 
@@ -112,73 +101,27 @@ int main(int argc, char * argv[]) {
 				psum += pval & bitmask;
 			}
 		}
-//		printf("origin = %d, psum = %d\n", origin, psum);
 
+		//loop to find the original psum that was encoded in the least significant bit of the 
+		//first lim pixels
 		foundPSum = 0;
-		char bitstring[lim+1];
+//		char bitstring[lim+1];
 		for(i = 0; i < lim; i++) {
 			foundPSum <<= 1;
 			foundPSum += tileR[i]&1;
-			bitstring[i] = (tileR[i]&1)+'0';
-	//		printf("%d\n", tileR[i]&1);
+//			bitstring[i] = (tileR[i]&1)+'0';
 		}
-		bitstring[lim] = 0;
+//		bitstring[lim] = 0;
 //		printf("bitstring = %s\n", bitstring);
-		sbuf[sindex] = abs(psum - foundPSum)/2;
-//		printf("foundPSum = %d, val = %d\n", foundPSum, sbuf[sindex]);
+		sbuf[sindex] = abs(psum - foundPSum)/2; //ignores whether the tile was modified via
+												//addition or subtraction
 	}
 	sbuf[slen] = 0;
 
-//	printf("Decrypted string: %s\n", sbuf);
-	printf("%s", sbuf);
-
-	//	//modifies tile pixel values
-	//	int s;
-	//	s = slen;
-	//	int px;
-	//	while(s) {
-	//		px = rand()%(TWIDTH*TWIDTH);
-	//		if(tileR[px] < (maxVal-2)) {
-	//			tileR[px] += 2;
-	//			s--;
-	//		}
-	//	}
-	//
-	//	//loop to write tile back into imageBuf
-	//	for(j = 0; j < TWIDTH; j++) {
-	//		for(i = 0; i < TWIDTH; i++) {
-	//			*((uint8 *) imageBuf + 3*i + j*scanlineSize) = tileR[i + j*TWIDTH];
-	//		}
-	//	}
-
-
-
-
-	//	//opens output image
-	//	TIFF* otif = TIFFOpen("out.tif", "w");
-	//	if(tif == NULL) {//ensures tif file can be opened
-	//		perror("Unable to open file");
-	//		exit(1);
-	//	}
-	//
-	//	//set necessary fields
-	//    TIFFSetField(otif, TIFFTAG_IMAGEWIDTH, imageWidth);
-	//    TIFFSetField(otif, TIFFTAG_IMAGELENGTH, imageLength);
-	//    TIFFSetField(otif, TIFFTAG_BITSPERSAMPLE, bitspersample);
-	//    TIFFSetField(otif, TIFFTAG_SAMPLESPERPIXEL, nsamples);
-	//    TIFFSetField(otif, TIFFTAG_PLANARCONFIG, planar);	
-	//    TIFFSetField(otif, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);	
-	//	TIFFSetField(otif, TIFFTAG_PHOTOMETRIC, photo);
-	//	TIFFSetField(otif, TIFFTAG_ROWSPERSTRIP, 1);	
-	//
-	//	//loop to write output image
-	//	for(i = 0; i < imageLength; i++) {
-	//		TIFFWriteScanline(otif, imageBuf+i*scanlineSize, i, 1);
-	//	}
+	printf("Decrypted string:\n%s", sbuf);
 
 	_TIFFfree(imageBuf);
 
-	//	TIFFClose(otif);
 	TIFFClose(tif);
 	return 0;
 }
